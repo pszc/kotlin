@@ -22,16 +22,13 @@ import com.intellij.openapi.roots.ContentEntry
 import com.intellij.openapi.roots.ModifiableRootModel
 import org.jetbrains.kotlin.config.CompilerSettings
 import org.jetbrains.kotlin.config.LanguageVersion
-import org.jetbrains.kotlin.idea.facet.KotlinFacet
-import org.jetbrains.kotlin.idea.facet.KotlinFacetConfiguration
-import org.jetbrains.kotlin.idea.facet.KotlinFacetType
-import org.jetbrains.kotlin.idea.facet.initializeIfNeeded
+import org.jetbrains.kotlin.idea.facet.*
 import org.jetbrains.kotlin.test.testFramework.runInEdtAndWait
 import org.jetbrains.kotlin.test.testFramework.runWriteAction
 
 class KotlinProjectDescriptorWithFacet(
-        private val languageVersion: LanguageVersion,
-        private val multiPlatform: Boolean = false
+    private val languageVersion: LanguageVersion,
+    private val multiPlatform: Boolean = false
 ) : KotlinLightProjectDescriptor() {
     override fun configureModule(module: Module, model: ModifiableRootModel, contentEntry: ContentEntry) {
         configureKotlinFacet(module) {
@@ -51,7 +48,10 @@ class KotlinProjectDescriptorWithFacet(
     }
 }
 
-fun configureKotlinFacet(module: Module, configureCallback: KotlinFacetConfiguration.() -> Unit = {}): KotlinFacet {
+fun configureKotlinFacet(
+    module: Module,
+    configureCallback: FacetConfigurationWithKotlinSettings.() -> Unit = {}
+): FacetWithKotlinConfiguration {
     val facetManager = FacetManager.getInstance(module)
     val facetModel = facetManager.createModifiableModel()
     val configuration = KotlinFacetConfiguration()

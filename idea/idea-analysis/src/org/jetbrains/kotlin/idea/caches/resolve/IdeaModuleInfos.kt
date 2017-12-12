@@ -5,6 +5,9 @@
 
 package org.jetbrains.kotlin.idea.caches.resolve
 
+import com.intellij.facet.*
+import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider
+import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.impl.scopes.LibraryScopeBase
 import com.intellij.openapi.project.Project
@@ -27,6 +30,7 @@ import org.jetbrains.kotlin.caches.resolve.LibraryModuleInfo
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.idea.configuration.BuildSystemType
 import org.jetbrains.kotlin.idea.configuration.getBuildSystemType
+import org.jetbrains.kotlin.idea.facet.AbstractKotlinFacetType
 import org.jetbrains.kotlin.idea.framework.getLibraryPlatform
 import org.jetbrains.kotlin.idea.project.KotlinModuleModificationTracker
 import org.jetbrains.kotlin.idea.project.TargetPlatformDetector
@@ -110,6 +114,26 @@ private fun ideaModelDependencies(module: Module, forProduction: Boolean): List<
     return result.toList()
 }
 
+private fun Module.findImplementedModuleName(modelsProvider: IdeModifiableModelsProvider): String? {
+    val facetModel = modelsProvider.getModifiableFacetModel(this)
+    val facet = facetModel.findFacet(
+        AbstractKotlinFacetType.TYPE_ID,
+        FacetTypeRegistry.getInstance().findFacetType(AbstractKotlinFacetType.DEBUG_NAME)!!.defaultFacetName
+    )
+    return facet?.configuration?.settings?.implementedModuleName
+}
+
+private fun Module.findImplementedModule(modelsProvider: IdeModifiableModelsProvider): Module? {
+    val implementedModuleName = findImplementedModuleName(modelsProvider)
+    return implementedModuleName?.let { modelsProvider.findIdeModule(it) }
+}
+
+private fun expectedByDependency(module: Module, forProduction: Boolean): IdeaModuleInfo? {
+    val modelsProvider = IdeModifiableModelsProviderImpl(module.project)
+    val expectedByModule = module.findImplementedModule(modelsProvider)
+    return if (forProduction) expectedByModule?.productionSourceInfo() else expectedByModule?.testSourceInfo()
+}
+
 interface ModuleSourceInfo : IdeaModuleInfo, TrackableModuleInfo {
     val module: Module
 
@@ -125,31 +149,37 @@ interface ModuleSourceInfo : IdeaModuleInfo, TrackableModuleInfo {
             KotlinModuleModificationTracker(module)
 }
 
-data class ModuleProductionSourceInfo internal constructor(override val module: Module) : ModuleSourceInfo {
-    override val name = Name.special("<production sources for module ${module.name}>")
+sealed class ModuleSourceInfoWithExpectedBy(private val forProduction: Boolean) : ModuleSourceInfo {
+    override val expectedBy: ModuleInfo?
+        //get() = if (forProduction) expectedByModule?.productionSourceInfo() else expectedByModule?.testSourceInfo()
+        get() = expectedByDependency(module, forProduction)
 
-    override fun contentScope(): GlobalSearchScope = ModuleProductionSourceScope(module)
-
-    override fun dependencies() = module.cached(CachedValueProvider {
+    override fun dependencies(): List<IdeaModuleInfo> = module.cached(CachedValueProvider {
         CachedValueProvider.Result(
-                ideaModelDependencies(module, forProduction = true),
-                ProjectRootModificationTracker.getInstance(module.project))
+            ideaModelDependencies(module, forProduction),
+            ProjectRootModificationTracker.getInstance(module.project))
     })
 }
 
+data class ModuleProductionSourceInfo internal constructor(
+    override val module: Module
+) : ModuleSourceInfoWithExpectedBy(forProduction = true) {
+
+    override val name = Name.special("<production sources for module ${module.name}>")
+
+    override fun contentScope(): GlobalSearchScope = ModuleProductionSourceScope(module)
+}
+
 //TODO: (module refactoring) do not create ModuleTestSourceInfo when there are no test roots for module
-data class ModuleTestSourceInfo internal constructor(override val module: Module) : ModuleSourceInfo {
+data class ModuleTestSourceInfo internal constructor(
+    override val module: Module
+) : ModuleSourceInfoWithExpectedBy(forProduction = false) {
+
     override val name = Name.special("<test sources for module ${module.name}>")
 
     override val displayedName get() = module.name + " (test)"
 
     override fun contentScope(): GlobalSearchScope = ModuleTestSourceScope(module)
-
-    override fun dependencies() = module.cached(CachedValueProvider {
-        CachedValueProvider.Result(
-                ideaModelDependencies(module, forProduction = false),
-                ProjectRootModificationTracker.getInstance(module.project))
-    })
 
     override fun modulesWhoseInternalsAreVisible() = module.cached(CachedValueProvider {
         val list = SmartList<ModuleInfo>()
@@ -166,10 +196,14 @@ data class ModuleTestSourceInfo internal constructor(override val module: Module
 
 internal fun ModuleSourceInfo.isTests() = this is ModuleTestSourceInfo
 
-fun Module.productionSourceInfo(): ModuleProductionSourceInfo? = if (hasProductionRoots()) ModuleProductionSourceInfo(this) else null
-fun Module.testSourceInfo(): ModuleTestSourceInfo? = if (hasTestRoots()) ModuleTestSourceInfo(this) else null
+fun Module.productionSourceInfo(): ModuleProductionSourceInfo? =
+    if (hasProductionRoots()) ModuleProductionSourceInfo(this) else null
 
-internal fun Module.correspondingModuleInfos(): List<ModuleSourceInfo> = listOf(testSourceInfo(), productionSourceInfo()).filterNotNull()
+fun Module.testSourceInfo(): ModuleTestSourceInfo? =
+    if (hasTestRoots()) ModuleTestSourceInfo(this) else null
+
+internal fun Module.correspondingModuleInfos(): List<ModuleSourceInfo> =
+    listOf(testSourceInfo(), productionSourceInfo()).filterNotNull()
 
 private fun Module.hasProductionRoots() = hasRootsOfType(JavaSourceRootType.SOURCE)
 private fun Module.hasTestRoots() = hasRootsOfType(JavaSourceRootType.TEST_SOURCE)

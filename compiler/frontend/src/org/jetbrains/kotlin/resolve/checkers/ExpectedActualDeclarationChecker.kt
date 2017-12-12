@@ -110,10 +110,8 @@ object ExpectedActualDeclarationChecker : DeclarationChecker {
     private fun checkActualDeclarationHasExpected(
         reportOn: KtNamedDeclaration, descriptor: MemberDescriptor, trace: BindingTrace, checkActual: Boolean
     ) {
-        // Using the platform module instead of the common module is sort of fine here because the former always depends on the latter.
-        // However, it would be clearer to find the common module this platform module implements and look for expected there instead.
-        // TODO: use common module here
-        val compatibility = ExpectedActualResolver.findExpectedForActual(descriptor, descriptor.module) ?: return
+        val commonModule = descriptor.module.expectedByModule ?: return
+        val compatibility = ExpectedActualResolver.findExpectedForActual(descriptor, commonModule) ?: return
 
         val hasActualModifier = descriptor.isActual && reportOn.hasActualModifier()
         if (!hasActualModifier) {

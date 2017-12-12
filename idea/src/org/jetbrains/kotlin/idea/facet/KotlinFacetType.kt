@@ -17,8 +17,6 @@
 package org.jetbrains.kotlin.idea.facet
 
 import com.intellij.facet.Facet
-import com.intellij.facet.FacetType
-import com.intellij.facet.FacetTypeId
 import com.intellij.facet.FacetTypeRegistry
 import com.intellij.facet.ui.FacetEditor
 import com.intellij.openapi.module.JavaModuleType
@@ -28,12 +26,8 @@ import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.idea.KotlinIcons
 import javax.swing.Icon
 
-class KotlinFacetType : FacetType<KotlinFacet, KotlinFacetConfiguration>(TYPE_ID, ID, NAME) {
+class KotlinFacetType : AbstractKotlinFacetType<KotlinFacetConfiguration>() {
     companion object {
-        val TYPE_ID = FacetTypeId<KotlinFacet>("kotlin-language")
-        val ID = "kotlin-language"
-        val NAME = "Kotlin"
-
         val INSTANCE: KotlinFacetType
             get() = FacetTypeRegistry.getInstance().findFacetType(TYPE_ID) as KotlinFacetType
     }

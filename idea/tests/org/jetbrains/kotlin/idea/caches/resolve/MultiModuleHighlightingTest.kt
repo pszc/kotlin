@@ -32,7 +32,8 @@ import org.jetbrains.kotlin.analyzer.ResolverForModuleComputationTracker
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
 import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.idea.completion.test.withServiceRegistered
-import org.jetbrains.kotlin.idea.facet.KotlinFacetConfiguration
+import org.jetbrains.kotlin.idea.facet.AbstractKotlinFacetType
+import org.jetbrains.kotlin.idea.facet.FacetConfigurationWithKotlinSettings
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.idea.project.KotlinCodeBlockModificationListener
 import org.jetbrains.kotlin.idea.project.KotlinModuleModificationTracker
@@ -210,9 +211,9 @@ open class MultiModuleHighlightingTest : AbstractMultiModuleHighlightingTest() {
     }
 
 
-    private fun Module.setupKotlinFacet(configure: KotlinFacetConfiguration.() -> Unit) = apply {
+    private fun Module.setupKotlinFacet(configure: FacetConfigurationWithKotlinSettings.() -> Unit) = apply {
         runWriteAction {
-            val facet = FacetManager.getInstance(this).addFacet(KotlinFacetType.INSTANCE, KotlinFacetType.NAME, null)
+            val facet = FacetManager.getInstance(this).addFacet(KotlinFacetType.INSTANCE, AbstractKotlinFacetType.NAME, null)
             val configuration = facet.configuration
 
             // this is actually needed so facet settings object is in a valid state

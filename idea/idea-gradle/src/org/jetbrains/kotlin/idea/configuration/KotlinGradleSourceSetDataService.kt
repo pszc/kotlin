@@ -182,7 +182,7 @@ private fun configureFacetByGradleModule(
 
     if (!moduleNode.hasKotlinPlugin) {
         val facetModel = modelsProvider.getModifiableFacetModel(ideModule)
-        val facet = facetModel.getFacetByType(KotlinFacetType.TYPE_ID)
+        val facet = facetModel.getFacetByType(AbstractKotlinFacetType.TYPE_ID)
         if (facet != null) {
             facetModel.removeFacet(facet)
         }

@@ -125,8 +125,13 @@ val mavenLibraryIdToPlatform: Map<String, TargetPlatformKind<*>> by lazy {
 
 private fun Module.findImplementedModuleName(modelsProvider: IdeModifiableModelsProvider): String? {
     val facetModel = modelsProvider.getModifiableFacetModel(this)
-    val facet = facetModel.findFacet(KotlinFacetType.TYPE_ID, KotlinFacetType.INSTANCE.defaultFacetName)
+    val facet = facetModel.findFacet(AbstractKotlinFacetType.TYPE_ID, KotlinFacetType.INSTANCE.defaultFacetName)
     return facet?.configuration?.settings?.implementedModuleName
+}
+
+private fun Module.findImplementedModule(modelsProvider: IdeModifiableModelsProvider): Module? {
+    val implementedModuleName = findImplementedModuleName(modelsProvider)
+    return implementedModuleName?.let { modelsProvider.findIdeModule(it) }
 }
 
 private fun Module.findImplementingModules(modelsProvider: IdeModifiableModelsProvider): List<Module> {
@@ -144,11 +149,11 @@ val Module.implementingModules: List<Module>
     })
 
 private fun Module.getModuleInfo(baseModuleSourceInfo: ModuleSourceInfo): ModuleSourceInfo? =
-        when (baseModuleSourceInfo) {
-            is ModuleProductionSourceInfo -> productionSourceInfo()
-            is ModuleTestSourceInfo -> testSourceInfo()
-            else -> null
-        }
+    when (baseModuleSourceInfo) {
+        is ModuleProductionSourceInfo -> productionSourceInfo()
+        is ModuleTestSourceInfo -> testSourceInfo()
+        else -> null
+    }
 
 private fun Module.findImplementingModuleInfos(moduleSourceInfo: ModuleSourceInfo): List<ModuleSourceInfo> {
     val modelsProvider = IdeModifiableModelsProviderImpl(project)
@@ -179,8 +184,7 @@ val ModuleDescriptor.implementedDescriptor: ModuleDescriptor?
         val module = moduleSourceInfo.module
 
         val modelsProvider = IdeModifiableModelsProviderImpl(module.project)
-        val implementedModuleName = module.findImplementedModuleName(modelsProvider)
-        val implementedModule = implementedModuleName?.let { modelsProvider.findIdeModule(it) }
+        val implementedModule = module.findImplementedModule(modelsProvider)
         val implementedModuleInfo = implementedModule?.getModuleInfo(moduleSourceInfo)
         return implementedModuleInfo?.let {
             KotlinCacheService.getInstance(module.project).getResolutionFacadeByModuleInfo(it, it.platform)?.moduleDescriptor
@@ -192,7 +196,7 @@ fun Module.getOrCreateFacet(modelsProvider: IdeModifiableModelsProvider,
                             commitModel: Boolean = false): KotlinFacet {
     val facetModel = modelsProvider.getModifiableFacetModel(this)
 
-    val facet = facetModel.findFacet(KotlinFacetType.TYPE_ID, KotlinFacetType.INSTANCE.defaultFacetName)
+    val facet = facetModel.findFacet(AbstractKotlinFacetType.TYPE_ID, KotlinFacetType.INSTANCE.defaultFacetName)
                 ?: with(KotlinFacetType.INSTANCE) { createFacet(this@getOrCreateFacet, defaultFacetName, createDefaultConfiguration(), null) }
                         .apply { facetModel.addFacet(this) }
     facet.configuration.settings.useProjectSettings = useProjectSettings
@@ -201,7 +205,7 @@ fun Module.getOrCreateFacet(modelsProvider: IdeModifiableModelsProvider,
             facetModel.commit()
         }
     }
-    return facet
+    return facet as KotlinFacet
 }
 
 fun KotlinFacet.configureFacet(

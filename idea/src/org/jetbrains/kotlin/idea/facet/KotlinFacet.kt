@@ -21,14 +21,16 @@ import com.intellij.facet.FacetManager.getInstance
 import com.intellij.openapi.module.Module
 
 class KotlinFacet(
-        module: Module,
-        name: String,
-        configuration: KotlinFacetConfiguration
-) : Facet<KotlinFacetConfiguration>(KotlinFacetType.INSTANCE, module, name, configuration, null) {
+    module: Module,
+    name: String,
+    configuration: KotlinFacetConfiguration
+) : Facet<FacetConfigurationWithKotlinSettings>(KotlinFacetType.INSTANCE, module, name, configuration, null) {
     companion object {
         fun get(module: Module): KotlinFacet? {
             if (module.isDisposed) return null
-            return getInstance(module).getFacetByType<KotlinFacet>(KotlinFacetType.TYPE_ID)
+            return getInstance(module).getFacetByType<Facet<FacetConfigurationWithKotlinSettings>>(
+                AbstractKotlinFacetType.TYPE_ID
+            ) as? KotlinFacet
         }
     }
 }

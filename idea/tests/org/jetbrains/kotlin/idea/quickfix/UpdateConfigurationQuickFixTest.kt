@@ -30,7 +30,7 @@ import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.configuration.KotlinJavaModuleConfigurator
-import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.idea.facet.AbstractKotlinFacetType
 import org.jetbrains.kotlin.idea.facet.getRuntimeLibraryVersion
 import org.jetbrains.kotlin.idea.project.getLanguageVersionSettings
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
@@ -193,7 +193,7 @@ class UpdateConfigurationQuickFixTest : LightPlatformCodeInsightFixtureTestCase(
         get() = project.getLanguageVersionSettings().getFeatureSupport(LanguageFeature.Coroutines)
 
     override fun tearDown() {
-        FacetManager.getInstance(myModule).getFacetByType(KotlinFacetType.TYPE_ID)?.let {
+        FacetManager.getInstance(myModule).getFacetByType(AbstractKotlinFacetType.TYPE_ID)?.let {
             FacetUtil.deleteFacet(it)
         }
         ConfigLibraryUtil.removeLibrary(myModule, "KotlinJavaRuntime")
